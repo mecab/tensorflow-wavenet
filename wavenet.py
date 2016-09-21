@@ -1,6 +1,7 @@
 import tensorflow as tf
 from wavenet_ops import causal_conv
 
+
 class WaveNet(object):
     '''Implements the WaveNet network for generative audio.
 
@@ -10,7 +11,6 @@ class WaveNet(object):
         net = WaveNet(batch_size, channels, dilations)
         loss = net.loss(input_batch)
     '''
-
 
     def __init__(self,
                  batch_size,
@@ -26,7 +26,6 @@ class WaveNet(object):
         self.residual_channels = residual_channels
         self.dilation_channels = dilation_channels
 
-
     # A single causal convolution layer that can change the number of channels.
     def _create_causal_layer(self, input_batch, in_channels, out_channels):
         with tf.name_scope('causal_layer'):
@@ -36,8 +35,12 @@ class WaveNet(object):
                 name="filter"))
             return causal_conv(input_batch, weights_filter, 1)
 
-
-    def _create_dilation_layer(self, input_batch, layer_index, dilation, in_channels, dilation_channels):
+    def _create_dilation_layer(self,
+                               input_batch,
+                               layer_index,
+                               dilation,
+                               in_channels,
+                               dilation_channels):
         '''Adds a single causal dilated convolution layer.'''
 
         weights_filter = tf.Variable(tf.truncated_normal(
@@ -64,7 +67,6 @@ class WaveNet(object):
 
         return transformed, input_batch + transformed
 
-
     def _preprocess(self, audio):
         '''Quantizes waveform amplitudes.'''
         with tf.name_scope('preprocessing'):
@@ -77,7 +79,6 @@ class WaveNet(object):
 
         return quantized
 
-
     def decode(self, output):
         mu = self.channels - 1
         y = tf.cast(output, tf.float32)
@@ -85,12 +86,13 @@ class WaveNet(object):
         x = tf.sign(y) * (1 / mu) * ((1 + mu)**abs(y) - 1)
         return x
 
-
     def _create_network(self, input_batch):
         outputs = []
         current_layer = input_batch
 
-        current_layer = self._create_causal_layer(current_layer, self.channels, self.residual_channels)
+        current_layer = self._create_causal_layer(current_layer,
+                                                  self.channels,
+                                                  self.residual_channels)
 
         # Add all defined dilation layers.
         with tf.name_scope('dilated_stack'):
@@ -108,7 +110,8 @@ class WaveNet(object):
             # Perform (+) -> ReLU -> 1x1 conv -> ReLU -> 1x1 conv to
             # postprocess the output.
             w1 = tf.Variable(tf.truncated_normal(
-                [1, self.residual_channels, int(self.channels / 2)], stddev=0.3,
+                [1, self.residual_channels, int(self.channels / 2)],
+                stddev=0.3,
                 name="postprocess1"))
             w2 = tf.Variable(tf.truncated_normal(
                 [1, int(self.channels / 2), self.channels], stddev=0.3,
@@ -127,7 +130,6 @@ class WaveNet(object):
 
         return conv2
 
-
     def _one_hot(self, input_batch):
         # One-hot encode waveform amplitudes, so we can define the network
         # as a categorical distribution over possible amplitudes.
@@ -139,16 +141,16 @@ class WaveNet(object):
 
         return encoded
 
-
     def predict_proba(self, waveform, name='wavenet'):
         with tf.variable_scope(name):
             encoded = self._one_hot(waveform)
             raw_output = self._create_network(encoded)
             out = tf.reshape(raw_output, [-1, self.channels])
             proba = tf.nn.softmax(tf.cast(out, tf.float64))
-            last = tf.slice(proba, [tf.shape(proba)[0] - 1, 0], [1, self.channels])
+            last = tf.slice(proba,
+                            [tf.shape(proba)[0] - 1, 0],
+                            [1, self.channels])
             return tf.reshape(last, [-1])
-
 
     def loss(self, input_batch, name='wavenet'):
         with tf.variable_scope(name):

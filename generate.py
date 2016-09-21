@@ -15,6 +15,7 @@ WINDOW = 8000
 WAVENET_PARAMS = './wavenet_params.json'
 SAVE_EVERY = None
 
+
 def get_arguments():
     parser = argparse.ArgumentParser(description='WaveNet generation script')
     parser.add_argument('checkpoint', type=str,
@@ -35,10 +36,12 @@ def get_arguments():
                         help='How many samples before saving in-progress wav')
     return parser.parse_args()
 
+
 def write_wav(waveform, sample_rate, filename):
     y = np.array(waveform)
     librosa.output.write_wav(filename, y, sample_rate)
     print('Updated wav file at {}'.format(filename))
+
 
 def main():
     args = get_arguments()
@@ -78,10 +81,11 @@ def main():
             feed_dict={samples: window})
         sample = np.random.choice(np.arange(quantization_steps), p=prediction)
         waveform.append(sample)
-        print('Sample {:3<d}/{:3<d}: {}'.format(step + 1, args.samples, sample))
-        if (args.wav_out_path
-            and args.save_every
-            and (step + 1) % args.save_every == 0):
+        print('Sample {:3<d}/{:3<d}: {}'
+              .format(step + 1, args.samples, sample))
+
+        if (args.wav_out_path and args.save_every and
+                (step + 1) % args.save_every == 0):
 
             out = sess.run(decode, feed_dict={samples: waveform})
             write_wav(out,
@@ -94,7 +98,8 @@ def main():
     tf.audio_summary('generated', decode, wavenet_params['sample_rate'])
     summaries = tf.merge_all_summaries()
 
-    summary_out = sess.run(summaries, feed_dict={samples: np.reshape(waveform, [-1, 1])})
+    summary_out = sess.run(summaries,
+                           feed_dict={samples: np.reshape(waveform, [-1, 1])})
     writer.add_summary(summary_out)
 
     if args.wav_out_path:
